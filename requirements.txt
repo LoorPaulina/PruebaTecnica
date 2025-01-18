@@ -1,0 +1,6 @@
+Flask-SQLAlchemy==3.0.3
+flask-marshmallow==0.14.0
+marshmallow-sqlalchemy==0.28.1
+bcrypt
+flask-jwt-extended
+python-dotenv
