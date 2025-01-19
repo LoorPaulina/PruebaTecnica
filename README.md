@@ -3,7 +3,7 @@
 ### Notas del GIT 📋
 Descarga el proyecto
 ```git<br>
-git clone <credenciales HTTPS o SSH>
+git clone <url del repositorio>
 ```
 ### Instalación 🔧
 
