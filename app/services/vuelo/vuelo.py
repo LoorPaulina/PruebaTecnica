@@ -39,7 +39,7 @@ def obtener_vuelos():
         results = result.all()
 
         if not results:
-            return {"mensaje": "No se encontraron datos con los filtros proporcionados."}
+            return {"data":[],"mensaje": "No se encontraron datos con los filtros proporcionados."}
         
         results = [
         {

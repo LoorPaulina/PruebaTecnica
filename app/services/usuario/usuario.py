@@ -1,6 +1,7 @@
 import bcrypt
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required
+from sqlalchemy import func
 from app.services.usuario import bp
 from app.services.reserva.modelos.reserva_db import Reserva
 from app.services.usuario.modelos.usuario_db import Usuario
@@ -9,16 +10,20 @@ from app.extensiones import db
 from app.utilities import reply, encriptacion
 from datetime import datetime
 from app.utilities import validar_contrasena
+from app.modelos.estado_reserva import EstadoReserva
 
 @bp.route('/<string:id>/reservas', methods=['GET'])
 @jwt_required()
 def ver_reservas_por_usuario(id):
     try:
-        reservas = db.session.query(Reserva,Vuelo).filter(
+        reservas = db.session.query(Reserva,Vuelo,EstadoReserva).filter(
             Reserva.usuario == id
         ).join(
             Vuelo, 
             Reserva.vuelo == Vuelo.id
+        ).join(
+            EstadoReserva,
+            EstadoReserva.codigo == Reserva.estado
         ).all()
 
         if not reservas:
@@ -30,9 +35,9 @@ def ver_reservas_por_usuario(id):
             "origen": vuelo.origen,
             "destino": vuelo.destino,
             "fecha": vuelo.fecha.isoformat() if vuelo.fecha else None,
-            "estado": reserva.estado
+            "estado": estado.nombre
         }
-         for reserva, vuelo in reservas
+         for reserva, vuelo, estado in reservas
         ]
         
         return jsonify({"data":results, "mensaje": reply.message_ok}),200
@@ -68,8 +73,15 @@ def registrar_usuario():
         if validacion:
             return ({"mensaje": validacion}),400
 
-        total_filas = db.session.query(Usuario).count()
-        nuevo_id = f"U{total_filas + 1:03}"
+        ultimo_codigo = db.session.query(func.max(Usuario.id)).scalar()
+
+        if ultimo_codigo:
+            ultimo_numero = int(ultimo_codigo[1:]) 
+            nuevo_numero = ultimo_numero + 1
+        else:
+            nuevo_numero = 1
+
+        nuevo_id = f"U{nuevo_numero:03}"
 
         usuario = Usuario(
             id = nuevo_id,

@@ -1,6 +1,7 @@
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
+from sqlalchemy import func
 from app.services.reserva import bp
 from app.extensiones import db
 from app.services.reserva.modelos.reserva_db import Reserva
@@ -20,9 +21,23 @@ def reservar_vuelo():
 
         if not data.get("usuarioId"):
             return jsonify({"mensaje": "El campo 'usuarioId' es obligatorio."}), 400
+
+        vuelo_id = db.session.query(Reserva).filter(
+            Reserva.vuelo == data.get("vueloId")
+        ).first()
+
+        if vuelo_id:
+            return jsonify({"mensaje": "El usuario ya tiene una reserva para este vuelo."}),404
         
-        total_filas = db.session.query(Reserva).count()
-        nuevo_id = f"R{total_filas + 1:03}"
+        ultimo_codigo = db.session.query(func.max(Reserva.id)).scalar()
+
+        if ultimo_codigo:
+            ultimo_numero = int(ultimo_codigo[1:]) 
+            nuevo_numero = ultimo_numero + 1
+        else:
+            nuevo_numero = 1
+
+        nuevo_id = f"R{nuevo_numero:03}"
 
         activo_id = db.session.query(EstadoReserva).filter(
             EstadoReserva.descripcion=="Activo"
@@ -41,14 +56,7 @@ def reservar_vuelo():
         
         if vuelo_id.disponibilidad ==0:
             return jsonify({"mensaje": "El vuelo no se encuentra disponible."}),404
-        
-
-        vuelo_id = db.session.query(Reserva).filter(
-            Reserva.vuelo == data.get("vueloId")
-        ).first()
-
-        if vuelo_id:
-            return jsonify({"mensaje": "El usuario ya tiene una reserva para este vuelo."}),404
+    
     
         reserva = Reserva(
             id = nuevo_id,
@@ -62,7 +70,7 @@ def reservar_vuelo():
         db.session.add(reserva)
         db.session.commit()
 
-        return jsonify({"mensaje": "Reserva creada con éxito"})
+        return jsonify({"mensaje": "Reserva creada con éxito"}),201
     except Exception as e:
         print(e)
         db.session.rollback()
@@ -78,7 +86,7 @@ def cancelar_reserva(id):
         ).first()
 
         if not reserva:
-            return jsonify({"mensaje": "No se encontraron reservas."})
+            return jsonify({"mensaje": "No se encontró reservas con el id proporcionado."})
 
         db.session.delete(reserva)
         db.session.commit()
